@@ -34,13 +34,13 @@ function woocommerce_safety_pay_init()
     {
         const SANDBOX = "sandbox";
         const PRODUCTION = "production";
-        const SUPPORTED_CURRENCIES = array('EUR');
-
-        const SUCCESS_REDIRECT_URL = "/checkout/order-received/";
-        const FAILURE_REDIRECT_URL = "/checkout/order-received/";
+        const SUPPORTED_CURRENCIES = array(
+            'EUR' => '(€) Euro',
+            'USD' => '$ Dollar',
+        );
 
         const DEFAULT_TITLE = "Pagar com SafetyPay";
-        const DEFAULT_UNSUPPORTED_MESSAGE = "SafetyPay não suporta a moeda da sua loja, atualmente o suporte se dará apenas para a(s) moeda(s) 'EUR'";
+        const DEFAULT_UNSUPPORTED_MESSAGE = "SafetyPay não suporta a moeda da sua loja, atualmente o suporte se dará apenas para a(s) moeda(s): ";
         const DEFAULT_SUCCESS_MESSAGE = "Obrigado por comprar conosco, começaremos a processar seu pedido em breve, confira se e-mail com os detalhes da sua compra";
         const DEFAULT_DESCRIPTION = "Pague com segurança utilizando o SafetyPay, a maior rede bancária que permite pagamentos em dinheiro, transferências bancárias e transações Internacionais on-line em todo mundo.";
 
@@ -50,10 +50,10 @@ function woocommerce_safety_pay_init()
         public $title;
         public $description;
         public $sandbox_mode;
+        public $currency_code;
         public $sandbox_api_key;
         public $production_api_key;
         public $enabled_safetyPay;
-        private $current_currency;
         public $sandbox_signature_key;
         public $order_success_message;
         public $sandbox_webhook_secret;
@@ -71,6 +71,7 @@ function woocommerce_safety_pay_init()
             "title",
             "description",
             "sandbox_mode",
+            "currency_code",
             "sandbox_api_key",
             "enabled_safetyPay",
             "production_api_key",
@@ -100,8 +101,6 @@ function woocommerce_safety_pay_init()
 
         public function __construct()
         {
-            //Obtém a moeda corrente da loja
-            $this->current_currency = get_woocommerce_currency();
 
             //URL do ícone que será exibido na página de checkout próximo ao nome do seu gateway
             $this->icon = plugins_url('images/logo.png', __FILE__);
@@ -112,6 +111,7 @@ function woocommerce_safety_pay_init()
             $this->title = $this->get_option('title');
             $this->description = $this->get_option('description');
             $this->api_version = $this->get_option('api_version');
+            $this->currency_code = $this->get_option('currency_code');
             $this->sandbox_api_key = $this->get_option('sandbox_api_key');
             $this->sandbox_mode = 'yes' === $this->get_option('sandbox_mode');
             $this->enabled_safetyPay = $this->get_option('enabled_safetyPay');
@@ -134,7 +134,6 @@ function woocommerce_safety_pay_init()
 
             //Permite salvar as informações alteradas pelo adminstrador da página
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
-
 
         }
 
@@ -159,6 +158,14 @@ function woocommerce_safety_pay_init()
                     'type' => 'checkbox',
                     'default' => 'yes',
                 ),
+                'currency_code' => array(
+                    'title' => __('Moeda', $this->id),
+                    'type' => 'select',
+                    'class' => 'wc-enhanced-select',
+                    'default' => 'EUR',
+                    'description' => __('Código da moéda padrão de operação', $this->id),
+                    'options' => self::SUPPORTED_CURRENCIES,
+                ),
                 'title' => array(
                     'title' => __('Título', $this->id),
                     'description' => __('Isso controla o título que o usuário vê durante o checkout.', $this->id),
@@ -171,6 +178,7 @@ function woocommerce_safety_pay_init()
                     'type' => 'textarea',
                     'default' => __(self::DEFAULT_DESCRIPTION, $this->id),
                 ),
+
                 'sandbox_mode' => array(
                     'title' => __('Modo sandbox', $this->id),
                     'label' => __('Ativar modo sandbox', $this->id),
@@ -318,7 +326,7 @@ function woocommerce_safety_pay_init()
                 "send_email_shopper" => $this->send_email_shopper == 'yes' ? true : false,
                 "sales_amount" => array(
                     "value" => $order->get_total(),
-                    "currency_code" => $order->get_currency(),
+                    "currency_code" => $this->currency_code,
                 )
             );
 
@@ -389,16 +397,20 @@ function woocommerce_safety_pay_init()
          * Este método verifica o tipo da moeda corrente da sua loja
          * e análiza os tipos de moedas que são suportadas por este gateway de pagamento
          */
-        public function admins_options()
+        public function admin_options()
         {
-            if (in_array($this->current_currency, apply_filters('woocommerce_paypal_supported_currencies', self::SUPPORTED_CURRENCIES), true)) {
+            $supported_currencies = array();
+            foreach (self::SUPPORTED_CURRENCIES as $key => $value) {
+                $supported_currencies[] = $key;
+            }
+            if (in_array(get_woocommerce_currency(), $supported_currencies)) {
                 parent::admin_options();
             } else {
                 ?>
                 <div class="inline error">
                     <p>
                         <strong><?php esc_html_e('Gateway disabled', 'woocommerce'); ?></strong>:
-                        <?php esc_html_e(self::DEFAULT_UNSUPPORTED_MESSAGE, 'woocommerce'); ?>
+                        <?php esc_html_e(self::DEFAULT_UNSUPPORTED_MESSAGE . implode(' | ', self::SUPPORTED_CURRENCIES), 'woocommerce'); ?>
                     </p>
                 </div>
                 <?php
