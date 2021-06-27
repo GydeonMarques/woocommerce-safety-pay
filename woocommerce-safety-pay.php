@@ -287,7 +287,8 @@ function woocommerce_safety_pay_init()
                 header('HTTP/1.1 200 OK');
                 $response = json_decode($data);
                 $order = wc_get_order($response->order_id);
-                echo json_encode($order->get_checkout_payment_url());
+                //TODO - Webhooks under development...
+                echo 'Success (under development)...';
             }
 
             exit();
