@@ -36,7 +36,6 @@ function woocommerce_safety_pay_init()
         const PRODUCTION = "production";
         const SUPPORTED_CURRENCIES = array(
             'EUR' => '(€) Euro',
-            'USD' => '$ Dollar',
         );
 
         const DEFAULT_TITLE = "Pagar com SafetyPay";
