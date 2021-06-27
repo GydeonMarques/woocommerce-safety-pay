@@ -162,18 +162,18 @@ function woocommerce_safety_pay_init()
                     'type' => 'select',
                     'class' => 'wc-enhanced-select',
                     'default' => 'EUR',
-                    'description' => __('Código da moéda padrão de operação', $this->id),
+                    'description' => __('Código da moeda padrão de operação', $this->id),
                     'options' => self::SUPPORTED_CURRENCIES,
                 ),
                 'title' => array(
                     'title' => __('Título', $this->id),
-                    'description' => __('Isso controla o título que o usuário vê durante o checkout.', $this->id),
+                    'description' => __('Título da opção de pagamento que irá ser apresentado ao durante o checkout.', $this->id),
                     'type' => 'text',
                     'default' => __(self::DEFAULT_TITLE, $this->id)
                 ),
                 'description' => array(
                     'title' => __('Descrição', $this->id),
-                    'description' => __('Isso controla a descrição que seu usuário vê durante o checkout.', $this->id),
+                    'description' => __('Descrição da opção de pagamento irá ser apresentado so usuário durante o checkout.', $this->id),
                     'type' => 'textarea',
                     'default' => __(self::DEFAULT_DESCRIPTION, $this->id),
                 ),
@@ -234,7 +234,7 @@ function woocommerce_safety_pay_init()
                     'title' => __('URL para receber notificações (webhook)', $this->id),
                     'type' => 'text',
                     'description' =>
-                        __('Essa e a <strong>URL</strong> que o safatey usará para notificar o seu sistema quando houver alguma mudança no status de pagamento. Toda vez que o seu sistema recebe essa notificação do SafetyPay, o status dos seus pedidos são atualizados automaticamente.<br><br>Para configurar a url de notificação:', $this->id) . '<br>' .
+                        __('Essa e a <strong>URL</strong> que o SafateyPay usará para notificar o seu sistema quando houver alguma mudança no status de pagamento. Toda vez que o seu sistema recebe essa notificação do SafetyPay, o status dos seus pedidos são atualizados automaticamente.<br><br>Para configurar a url de notificação:', $this->id) . '<br>' .
                         __('1. Navegue até o painel: <a href="https://sandbox-secure.safetypay.com/Merchants/Login.aspx" target="_blank">Sandbox SafetyPay</a> | <a href="https://secure.safetypay.com/Merchants/Login.aspx" target="_blank">SafetyPay</a>', $this->id) . '<br>' .
                         __('2. Informe seus dados de acesso e click em <strong>Login</strong>', $this->id) . '<br>' .
                         __('3. Click no menu <strong>Profile</strong> > <strong>Notifications</strong>', $this->id) . '<br>' .
@@ -249,7 +249,7 @@ function woocommerce_safety_pay_init()
                     'type' => 'select',
                     'class' => 'wc-enhanced-select',
                     'default' => '24',
-                    'description' => __('Este e o tempo de expiração do link de pagamento, após esse tempo, são será possível realizar o pagamento utilizando o mesmo link, será necessário efeturar um novo pedido.', $this->id),
+                    'description' => __('Este e o tempo de expiração do link de pagamento, após esse tempo, são será possível realizar o pagamento utilizando o mesmo link, será necessário efeturar um novo pedido para obter um link atualizado.', $this->id),
                     'options' => array(
                         '2' => '2 Horas',
                         '4' => '4 Horas',
