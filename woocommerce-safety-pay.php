@@ -275,24 +275,6 @@ function woocommerce_safety_pay_init()
             }
         }
 
-        /**
-         * Atualiza o status do pedido com base na resposta enviada pelo gateway de pagamento por meio
-         * de um link de callback (webhooks)
-         */
-        public function process_webhook()
-        {
-
-            $data = file_get_contents('php://input');
-            if (isset($data)) {
-                header('HTTP/1.1 200 OK');
-                $response = json_decode($data);
-                $order = wc_get_order($response->order_id);
-                //TODO - Webhooks under development...
-                echo 'Success (under development)...';
-            }
-
-            exit();
-        }
 
         /**
          * Processe o pagamento e devolva o resultado.
@@ -350,8 +332,8 @@ function woocommerce_safety_pay_init()
                     // Atualiza o status do pedido (Aguardando pagamento...)
                     $order->update_status('on-hold', __('Aguardando pagamento...', $this->id));
 
-                    //Salva o token da transação nos meta dados do pedido
-                    $order->update_meta_data('digest_check', $result['digest_check']);
+                    //Salva o id da operação nos meta dados do pedido
+                    $order->update_meta_data('operation_id', $result['operation_id']);
 
                     //Url de checkout para onde o usuário será redirecionado para realizar o pagamento.
                     $checkout_url = $result['gateway_token_url'];
@@ -376,9 +358,119 @@ function woocommerce_safety_pay_init()
         }
 
         /**
-         * Thank You page message.
+         * Atualiza o status do pedido com base na resposta enviada pelo gateway de pagamento por meio
+         * de um link de callback (webhooks)
+         */
+        public function process_webhook()
+        {
+            $data = file_get_contents('php://input');
+            if (isset($data)) {
+                header('HTTP/1.1 200 OK');
+                $response = json_decode($data);
+                if (isset($response)) {
+                    $args = array(
+                        'apiKey' => $response->apiKey,
+                        'amount' => $response->amount,
+                        'status' => $response->status,
+                        'signature' => $response->signature,
+                        'currencyID' => $response->currencyID,
+                        'referenceNo' => $response->referenceNo,
+                        'requestDateTime' => $response->requestDateTime,
+                        'merchantSalesID' => $response->merchantSalesID,
+                        'creationDateTime' => $response->creationDateTime,
+                        'paymentReferenceNo' => $response->paymentReferenceNo,
+                    );
+
+                    $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
+                    $order = wc_get_order($response->merchantSalesID);
+                    if (isset($order) && isset($response->status)) {
+                        if ($this->validate_signature($args)) {
+                            switch ($response->status) {
+                                case 101://Pagamento pendente
+                                    $order->update_status('on-hold', __('Aguardando pagamento...', $this->id));
+                                    break;
+                                case 102://Pagamento confirmado
+                                    $order->payment_complete();
+                                    break;
+                                default:
+                                    $order->update_status('failed', __('Falha no pagamento', $this->id));
+                                    break;
+                            }
+
+                            //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
+                            echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
+                        }
+                    }
+                }
+            }
+
+            exit();
+        }
+
+        /**
+         * Gera um novo hash com os dados retonardos da api por meio do link de callback (webhooks),
+         * a partir disso, será gerada uma nova assinatura usando o algotitimo sha256, após isso será
+         * realizado uma validação da nova assinatura gerada com a assinatura gerada pela api.
+         * @param $args
+         * @return array
+         */
+        private function validate_signature($args): bool
+        {
+            if (isset($args)) {
+
+                $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
+
+                $api_response_signature = $args['signature'];
+                $new_signature_generated = $this->generate_signature_hash($args, $api_signature_key);
+
+                return strtoupper($api_response_signature) == strtoupper($new_signature_generated);
+
+            } else {
+                return false;
+            }
+        }
+
+
+        /**
+         * Gera uma nova assinatura
+         * @param $args
+         * @param $signature
+         * @return string
+         */
+        private function generate_signature_hash($args, $signature): string
+        {
+            return hash('sha256', $this->generate_data_hash($args, $signature));
+        }
+
+        /**
+         * Gera um único hash de dados.
+         * @param $args
+         * @param $signature
+         * @param string $sepator
+         * @return string
+         */
+        private function generate_data_hash($args, $signature, $sepator = ''): string
+        {
+            if (isset($args) && isset($signature)) {
+                return
+                    $args['requestDateTime'] .
+                    $sepator . $args['merchantSalesID'] .
+                    $sepator . $args['referenceNo'] .
+                    $sepator . $args['creationDateTime'] .
+                    $sepator . $args['amount'] .
+                    $sepator . $args['currencyID'] .
+                    $sepator . $args['paymentReferenceNo'] .
+                    $sepator . $args['status'] .
+                    $sepator . $signature;
+            } else {
+                return '';
+            }
+        }
+
+        /**
+         * Mensagem da página de agradecimento.
          *
-         * @param int $order_id Order ID.
+         * @param int $order_id
          */
         public function thankyou_page($order_id)
         {
