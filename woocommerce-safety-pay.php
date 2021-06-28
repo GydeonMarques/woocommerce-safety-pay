@@ -40,7 +40,7 @@ function woocommerce_safety_pay_init()
 
         const DEFAULT_TITLE = "Pagar com SafetyPay";
         const DEFAULT_UNSUPPORTED_MESSAGE = "SafetyPay não suporta a moeda da sua loja, atualmente o suporte se dará apenas para a(s) moeda(s): ";
-        const DEFAULT_SUCCESS_MESSAGE = "Obrigado por comprar conosco, começaremos a processar seu pedido em breve, confira se e-mail com os detalhes da sua compra";
+        const DEFAULT_SUCCESS_MESSAGE = "Obrigado por comprar conosco, começaremos a processar seu pedido em breve.";
         const DEFAULT_DESCRIPTION = "Pague com segurança utilizando o SafetyPay, a maior rede bancária que permite pagamentos em dinheiro, transferências bancárias e transações Internacionais on-line em todo mundo.";
 
         //ID exclusivo para o gateway
