@@ -52,7 +52,7 @@ function woocommerce_safety_pay_init()
         public $currency_code;
         public $sandbox_api_key;
         public $production_api_key;
-        public $enabled_safetyPay;
+        public $enabled;
         public $sandbox_signature_key;
         public $order_success_message;
         public $sandbox_webhook_secret;
@@ -68,11 +68,11 @@ function woocommerce_safety_pay_init()
 
         public $visible_settings = array(
             "title",
+            "enabled",
             "description",
             "sandbox_mode",
             "currency_code",
             "sandbox_api_key",
-            "enabled_safetyPay",
             "production_api_key",
             "send_email_shopper",
             "order_success_message",
@@ -108,12 +108,12 @@ function woocommerce_safety_pay_init()
             $this->init_settings();
 
             $this->title = $this->get_option('title');
+            $this->enabled = $this->get_option('enabled');
             $this->description = $this->get_option('description');
             $this->api_version = $this->get_option('api_version');
             $this->currency_code = $this->get_option('currency_code');
             $this->sandbox_api_key = $this->get_option('sandbox_api_key');
             $this->sandbox_mode = 'yes' === $this->get_option('sandbox_mode');
-            $this->enabled_safetyPay = $this->get_option('enabled_safetyPay');
             $this->production_api_key = $this->get_option('production_api_key');
             $this->send_email_shopper = $this->get_option('send_email_shopper');
             $this->order_success_message = $this->get_option('order_success_message');
@@ -143,10 +143,10 @@ function woocommerce_safety_pay_init()
         public function init_form_fields()
         {
             $default_form_fields = array(
-                'enabled_safetyPay' => array(
+                'enabled' => array(
                     'title' => __('Plugin', $this->id),
-                    'label' => __('Ativar plugin SafetyPay', $this->id),
-                    'description' => __('Ativar ou desativar sistema de pagamentos utilizando o SafetyPay.', $this->id),
+                    'label' => __('Ativar SafetyPay', $this->id),
+                    'description' => __('Ativar ou desativar a opção de pagamentos utilizando o SafetyPay.', $this->id),
                     'type' => 'checkbox',
                     'default' => 'yes'
                 ),
@@ -234,7 +234,7 @@ function woocommerce_safety_pay_init()
                     'title' => __('URL para receber notificações (webhook)', $this->id),
                     'type' => 'text',
                     'description' =>
-                        __('Essa e a <strong>URL</strong> que o SafateyPay usará para notificar o seu sistema quando houver alguma mudança no status de pagamento. Toda vez que o seu sistema recebe essa notificação do SafetyPay, o status dos seus pedidos são atualizados automaticamente.<br><br>Para configurar a url de notificação:', $this->id) . '<br>' .
+                        __('<strong>URL</strong> que o SafateyPay usará para notificar o seu sistema quando houver alguma mudança no status de pagamento. Toda vez que o seu sistema recebe essa notificação do SafetyPay, o status dos seus pedidos são atualizados automaticamente.<br><br>Para configurar a url de notificação:', $this->id) . '<br>' .
                         __('1. Navegue até o painel: <a href="https://sandbox-secure.safetypay.com/Merchants/Login.aspx" target="_blank">Sandbox SafetyPay</a> | <a href="https://secure.safetypay.com/Merchants/Login.aspx" target="_blank">SafetyPay</a>', $this->id) . '<br>' .
                         __('2. Informe seus dados de acesso e click em <strong>Login</strong>', $this->id) . '<br>' .
                         __('3. Click no menu <strong>Profile</strong> > <strong>Notifications</strong>', $this->id) . '<br>' .
