@@ -167,13 +167,13 @@ function woocommerce_safety_pay_init()
                 ),
                 'title' => array(
                     'title' => __('Título', $this->id),
-                    'description' => __('Título da opção de pagamento que irá ser apresentado ao durante o checkout.', $this->id),
+                    'description' => __('Título da opção de pagamento que irá ser apresentado ao usuário durante o checkout.', $this->id),
                     'type' => 'text',
                     'default' => __(self::DEFAULT_TITLE, $this->id)
                 ),
                 'description' => array(
                     'title' => __('Descrição', $this->id),
-                    'description' => __('Descrição da opção de pagamento irá ser apresentado so usuário durante o checkout.', $this->id),
+                    'description' => __('Descrição da opção de pagamento que irá ser apresentado ao usuário durante o checkout.', $this->id),
                     'type' => 'textarea',
                     'default' => __(self::DEFAULT_DESCRIPTION, $this->id),
                 ),
@@ -249,7 +249,7 @@ function woocommerce_safety_pay_init()
                     'type' => 'select',
                     'class' => 'wc-enhanced-select',
                     'default' => '24',
-                    'description' => __('Este e o tempo de expiração do link de pagamento, após esse tempo, são será possível realizar o pagamento utilizando o mesmo link, será necessário efeturar um novo pedido para obter um link atualizado.', $this->id),
+                    'description' => __('Tempo de expiração do link de pagamento, após esse tempo são será possível realizar o pagamento utilizando o mesmo link, será necessário efeturar um novo pedido para obter um link atualizado.', $this->id),
                     'options' => array(
                         '2' => '2 Horas',
                         '4' => '4 Horas',
