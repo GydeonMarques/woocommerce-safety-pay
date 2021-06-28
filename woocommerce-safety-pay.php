@@ -3,7 +3,7 @@
   Plugin Name:  SafetyPay for WooCommerce
   Plugin URI:   https://github.com/GydeonMarques/woocommerce-satefty-pay.git
   Description:  SafetyPay Payment Gateway Integration for WooCommerce.
-  Version:      1.0.0
+  Version:      1.0.1
   Author:       Gideon Marques da Silva
   Author URI:   https://www.linkedin.com/in/gideon-marques-da-silva-40921a1b0/
   License:      GPL-2.0+
@@ -382,7 +382,7 @@ function woocommerce_safety_pay_init()
 
                     $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
                     $order = new WC_Order($response->merchantSalesID);
-                    if (isset($order) && isset($response->status)) {
+                    if (isset($order) && $order->get_id() == $response->merchantSalesID && $response->status) {
                         if ($this->validate_signature($args)) {
                             switch ($response->status) {
                                 case 101://Pagamento pendente
