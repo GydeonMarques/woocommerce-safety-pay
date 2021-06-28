@@ -365,7 +365,6 @@ function woocommerce_safety_pay_init()
         {
             $data = file_get_contents('php://input');
             if (isset($data)) {
-                header('HTTP/1.1 200 OK');
                 $response = json_decode($data);
                 if (isset($response)) {
                     $args = array(
@@ -382,7 +381,7 @@ function woocommerce_safety_pay_init()
                     );
 
                     $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
-                    $order = wc_get_order($response->merchantSalesID);
+                    $order = new WC_Order($response->merchantSalesID);
                     if (isset($order) && isset($response->status)) {
                         if ($this->validate_signature($args)) {
                             switch ($response->status) {
@@ -397,8 +396,13 @@ function woocommerce_safety_pay_init()
                                     break;
                             }
 
+                            header('HTTP/1.1 200 OK');
                             //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
                             echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
+
+                        } else {
+                            header('HTTP/1.1 403 OK');
+                            echo "Not authorized";
                         }
                     }
                 }
