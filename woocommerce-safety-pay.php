@@ -47,12 +47,12 @@ function woocommerce_safety_pay_init()
         public $id = "safetypay";
         public $icon;
         public $title;
+        public $enabled;
         public $description;
         public $sandbox_mode;
         public $currency_code;
         public $sandbox_api_key;
         public $production_api_key;
-        public $enabled;
         public $sandbox_signature_key;
         public $order_success_message;
         public $sandbox_webhook_secret;
@@ -60,6 +60,7 @@ function woocommerce_safety_pay_init()
         public $production_signature_key;
         public $production_webhook_secret;
         public $send_email_shopper = true;
+
         public $process_payment_callback_uri;
 
         //uri de retorno de chamado de processar pagamento
@@ -150,6 +151,7 @@ function woocommerce_safety_pay_init()
                     'type' => 'checkbox',
                     'default' => 'yes'
                 ),
+
                 'send_email_shopper' => array(
                     'title' => __('E-mail', $this->id),
                     'label' => __('Enviar e-mail ao comprador', $this->id),
@@ -177,7 +179,6 @@ function woocommerce_safety_pay_init()
                     'type' => 'textarea',
                     'default' => __(self::DEFAULT_DESCRIPTION, $this->id),
                 ),
-
                 'sandbox_mode' => array(
                     'title' => __('Modo sandbox', $this->id),
                     'label' => __('Ativar modo sandbox', $this->id),
@@ -366,6 +367,7 @@ function woocommerce_safety_pay_init()
             $data = file_get_contents('php://input');
             if (isset($data)) {
                 $response = json_decode($data);
+
                 if (isset($response)) {
                     $args = array(
                         'apiKey' => $response->apiKey,
@@ -382,13 +384,14 @@ function woocommerce_safety_pay_init()
 
                     $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
                     $order = new WC_Order($response->merchantSalesID);
+
                     if (isset($order) && $order->get_id() == $response->merchantSalesID && $response->status) {
                         if ($this->validate_signature($args)) {
                             switch ($response->status) {
-                                case 101://Pagamento pendente
+                                case '101'://Pagamento pendente
                                     $order->update_status('on-hold', __('Aguardando pagamento...', $this->id));
                                     break;
-                                case 102://Pagamento confirmado
+                                case '102'://Pagamento confirmado
                                     $order->payment_complete();
                                     break;
                                 default:
@@ -399,15 +402,24 @@ function woocommerce_safety_pay_init()
                             header('HTTP/1.1 200 OK');
                             //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
                             echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
-
+                            exit();
                         } else {
                             header('HTTP/1.1 403 OK');
-                            echo "Not authorized";
+                            echo json_encode(array(
+                                'code' => 403,
+                                'message' => 'Not authorized.'
+                            ));
+                            exit();
                         }
                     }
                 }
             }
 
+            header('HTTP/1.1 400 OK');
+            echo json_encode(array(
+                'code' => 400,
+                'message' => 'We were unable to process your request.'
+            ));
             exit();
         }
 
@@ -513,6 +525,7 @@ function woocommerce_safety_pay_init()
             }
         }
     }
+
 
     /**
      * Adicione o plugin do SafetyPay a lista de gateways de pagamentos do WooCommerce
