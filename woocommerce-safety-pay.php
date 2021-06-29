@@ -334,10 +334,6 @@ function woocommerce_safety_pay_init()
                     //Url de checkout para onde o usuário será redirecionado para realizar o pagamento.
                     $checkout_url = $result['gateway_token_url'];
 
-                    //Adiciona algumas notas para o cliente
-                    $order->add_order_note(self::DEFAULT_SUCCESS_MESSAGE, true, false);
-                    $order->add_order_note(self::AWAITING_PAYMENT_MESSAGE, true, false);
-
                     // Atualiza o status do pedido (Aguardando pagamento...)
                     $order->update_status('on-hold', __(self::AWAITING_PAYMENT_MESSAGE, $this->id));
 
@@ -403,15 +399,12 @@ function woocommerce_safety_pay_init()
                                 switch ($status) {
                                     case 101://Pagamento pendente
                                         $order->update_status('on-hold', __(self::AWAITING_PAYMENT_MESSAGE, $this->id));
-                                        $order->add_order_note(self::AWAITING_PAYMENT_MESSAGE, true, false);
                                         break;
                                     case 102://Pagamento confirmado
                                         $order->payment_complete($payment_reference);
-                                        $order->add_order_note(self::PAYMENT_MESSAGE_CONFIRMED_SUCCESSFULLY . '<br>Código de referência (' . $payment_reference . ')', true, false);
                                         break;
                                     default:
                                         $order->update_status('failed', __(self::PAYMENT_FAILURE_MESSAGE, $this->id));
-                                        $order->add_order_note(self::PAYMENT_FAILURE_MESSAGE, true, false);
                                         break;
                                 }
 
