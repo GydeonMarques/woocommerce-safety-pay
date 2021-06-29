@@ -39,8 +39,11 @@ function woocommerce_safety_pay_init()
         );
 
         const DEFAULT_TITLE = "Pagar com SafetyPay";
-        const DEFAULT_UNSUPPORTED_MESSAGE = "SafetyPay não suporta a moeda da sua loja, atualmente o suporte se dará apenas para a(s) moeda(s): ";
+        const AWAITING_PAYMENT_MESSAGE = "Aguardando pagamento...";
+        const PAYMENT_FAILURE_MESSAGE = "Falha no pagamento do pedido.";
+        const PAYMENT_MESSAGE_CONFIRMED_SUCCESSFULLY = "Pagamento confirmado com sucesso!";
         const DEFAULT_SUCCESS_MESSAGE = "Obrigado por comprar conosco, começaremos a processar seu pedido em breve.";
+        const DEFAULT_UNSUPPORTED_MESSAGE = "SafetyPay não suporta a moeda da sua loja, atualmente o suporte se dará apenas para a(s) moeda(s): ";
         const DEFAULT_DESCRIPTION = "Pague com segurança utilizando o SafetyPay, a maior rede bancária que permite pagamentos em dinheiro, transferências bancárias e transações Internacionais on-line em todo mundo.";
 
         //ID exclusivo para o gateway
@@ -289,6 +292,7 @@ function woocommerce_safety_pay_init()
             $order = new WC_Order($order_id);
             include_once dirname(__FILE__) . '/includes/safety-pay-api-.php';
 
+            $user = $order->get_user();
             $sandbox_api_key = $this->get_option('sandbox_api_key');
             $production_api_key = $this->get_option('production_api_key');
             $environment = $this->sandbox_mode ? self::SANDBOX : self::PRODUCTION;
@@ -302,11 +306,11 @@ function woocommerce_safety_pay_init()
                 "requested_payment_type" => "StandardorBoleto",
                 "payment_ok_url" => $this->get_return_url($order),
                 "payment_error_url" => $this->get_return_url($order),
-                "transaction_email" => $order->get_user()->user_email,
+                "transaction_email" => $user ? $user->user_email : '',
                 "application_id" => SafetyPay_API::$EXPRESS_APPLICATION_ID,
                 "language_code" => strtoupper(explode("_", get_locale())[0]),
                 "expiration_time_minutes" => ((int)$this->payment_link_expiry_time) * 60,
-                "send_email_shopper" => $this->send_email_shopper == 'yes' ? true : false,
+                "send_email_shopper" => $this->send_email_shopper == 'yes' && $user ? true : false,
                 "sales_amount" => array(
                     "value" => $order->get_total(),
                     "currency_code" => $this->currency_code,
@@ -327,17 +331,21 @@ function woocommerce_safety_pay_init()
 
                 if ($code == 201) {
 
-                    // Add algumas notas para o cliente
-                    $order->add_order_note(self::DEFAULT_SUCCESS_MESSAGE, true, false);
-
-                    // Atualiza o status do pedido (Aguardando pagamento...)
-                    $order->update_status('on-hold', __('Aguardando pagamento...', $this->id));
-
-                    //Salva o id da operação nos meta dados do pedido
-                    $order->update_meta_data('operation_id', $result['operation_id']);
-
                     //Url de checkout para onde o usuário será redirecionado para realizar o pagamento.
                     $checkout_url = $result['gateway_token_url'];
+
+                    //Adiciona algumas notas para o cliente
+                    $order->add_order_note(self::DEFAULT_SUCCESS_MESSAGE, true, false);
+                    $order->add_order_note(self::AWAITING_PAYMENT_MESSAGE, true, false);
+
+                    // Atualiza o status do pedido (Aguardando pagamento...)
+                    $order->update_status('on-hold', __(self::AWAITING_PAYMENT_MESSAGE, $this->id));
+
+                    //Salva o id da operação nos meta dados do pedido
+                    $order->add_meta_data('operation_id', $result['operation_id'], true);
+
+                    //Salva a url de checkout nos meta dados do pedido
+                    $order->add_meta_data('checkout_url', $checkout_url, true);
 
                     //Limpa os items do carrinho
                     WC()->cart->empty_cart();
@@ -366,43 +374,63 @@ function woocommerce_safety_pay_init()
         {
             $data = file_get_contents('php://input');
             if (isset($data)) {
-                $response = json_decode($data);
-
+                $response = json_decode($data, true);
                 if (isset($response)) {
                     $args = array(
-                        'apiKey' => $response->apiKey,
-                        'amount' => $response->amount,
-                        'status' => $response->status,
-                        'signature' => $response->signature,
-                        'currencyID' => $response->currencyID,
-                        'referenceNo' => $response->referenceNo,
-                        'requestDateTime' => $response->requestDateTime,
-                        'merchantSalesID' => $response->merchantSalesID,
-                        'creationDateTime' => $response->creationDateTime,
-                        'paymentReferenceNo' => $response->paymentReferenceNo,
+                        'apiKey' => $response['ApiKey'],
+                        'amount' => $response['Amount'],
+                        'status' => $response['Status'],
+                        'signature' => $response['Signature'],
+                        'currencyID' => $response['CurrencyID'],
+                        'referenceNo' => $response['ReferenceNo'],
+                        'requestDateTime' => $response['RequestDateTime'],
+                        'merchantSalesID' => $response['MerchantSalesID'],
+                        'creationDateTime' => $response['CreationDateTime'],
+                        'paymentReferenceNo' => $response['PaymentReferenceNo'],
                     );
 
-                    $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
-                    $order = new WC_Order($response->merchantSalesID);
+                    $status = $response['Status'];
+                    $order_id = $response['MerchantSalesID'];
+                    $payment_reference = $response['PaymentReferenceNo'];
 
-                    if (isset($order) && $order->get_id() == $response->merchantSalesID && $response->status) {
+                    $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
+                    $order = new WC_Order($order_id);
+
+                    if (isset($order) && $order->get_id() == $order_id && $status) {
                         if ($this->validate_signature($args)) {
-                            switch ($response->status) {
-                                case '101'://Pagamento pendente
-                                    $order->update_status('on-hold', __('Aguardando pagamento...', $this->id));
-                                    break;
-                                case '102'://Pagamento confirmado
-                                    $order->payment_complete();
-                                    break;
-                                default:
-                                    $order->update_status('failed', __('Falha no pagamento', $this->id));
-                                    break;
+                            if (!$order->is_paid()) {
+                                switch ($status) {
+                                    case 101://Pagamento pendente
+                                        $order->update_status('on-hold', __(self::AWAITING_PAYMENT_MESSAGE, $this->id));
+                                        $order->add_order_note(self::AWAITING_PAYMENT_MESSAGE, true, false);
+                                        break;
+                                    case 102://Pagamento confirmado
+                                        $order->payment_complete($payment_reference);
+                                        $order->add_order_note(self::PAYMENT_MESSAGE_CONFIRMED_SUCCESSFULLY . '<br>Código de referência (' . $payment_reference . ')', true, false);
+                                        break;
+                                    default:
+                                        $order->update_status('failed', __(self::PAYMENT_FAILURE_MESSAGE, $this->id));
+                                        $order->add_order_note(self::PAYMENT_FAILURE_MESSAGE, true, false);
+                                        break;
+                                }
+
+                                $order->add_meta_data('transaction_id', $payment_reference);
+                                $order->save();
+
+                                header('HTTP/1.1 200 OK');
+                                //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
+                                echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
+                                exit();
+
+                            } else {
+                                header('HTTP/1.1 400 OK');
+                                echo json_encode(array(
+                                    'code' => 400,
+                                    'message' => 'The order has already been paid'
+                                ));
+                                exit();
                             }
 
-                            header('HTTP/1.1 200 OK');
-                            //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
-                            echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
-                            exit();
                         } else {
                             header('HTTP/1.1 403 OK');
                             echo json_encode(array(
