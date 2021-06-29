@@ -37,12 +37,14 @@ function woocommerce_safety_pay_init()
         const SUPPORTED_CURRENCIES = array(
             'EUR' => '(€) Euro',
         );
-
         const SUPPORTED_LANGUAGES = array(
             'EN', 'ES', 'PT', 'DE'
         );
 
         const DEFAULT_TITLE = "Pagar com SafetyPay";
+        const REFUND_DENIED = "Reembolso Negado";
+        const REFUND_APPROVED = "Reembolso Aprovado";
+        const REFUND_REQUESTED = "Reembolso solicitado";
         const EXPIRED_PAYMENT_MESSAGE = "Pagamento expirado!";
         const AWAITING_PAYMENT_MESSAGE = "Aguardando pagamento...";
         const PAYMENT_FAILURE_MESSAGE = "Falha no pagamento do pedido.";
@@ -142,7 +144,6 @@ function woocommerce_safety_pay_init()
 
             //Permite salvar as informações alteradas pelo adminstrador da página
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options'));
-
         }
 
         /**
@@ -159,7 +160,6 @@ function woocommerce_safety_pay_init()
                     'type' => 'checkbox',
                     'default' => 'yes'
                 ),
-
                 'send_email_shopper' => array(
                     'title' => __('E-mail', $this->id),
                     'label' => __('Enviar e-mail ao comprador', $this->id),
@@ -410,6 +410,15 @@ function woocommerce_safety_pay_init()
                                         break;
                                     case 102://Pagamento confirmado
                                         $order->payment_complete($payment_reference);
+                                        break;
+                                    case 201://Reembolso solicitado
+                                        $order->update_status('refunded', __(self::REFUND_REQUESTED, $this->id));
+                                        break;
+                                    case 202://Reembolso Negado
+                                        $order->update_status('refunded', __(self::REFUND_DENIED, $this->id));
+                                        break;
+                                    case 203://Reembolso Aprovado
+                                        $order->update_status('refunded', __(self::REFUND_APPROVED, $this->id));
                                         break;
                                     default:
                                         $order->update_status('failed', __(self::PAYMENT_FAILURE_MESSAGE, $this->id));
