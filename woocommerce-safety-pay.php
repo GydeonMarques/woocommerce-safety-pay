@@ -38,7 +38,12 @@ function woocommerce_safety_pay_init()
             'EUR' => '(€) Euro',
         );
 
+        const SUPPORTED_LANGUAGES = array(
+            'EN', 'ES', 'PT', 'DE'
+        );
+
         const DEFAULT_TITLE = "Pagar com SafetyPay";
+        const EXPIRED_PAYMENT_MESSAGE = "Pagamento expirado!";
         const AWAITING_PAYMENT_MESSAGE = "Aguardando pagamento...";
         const PAYMENT_FAILURE_MESSAGE = "Falha no pagamento do pedido.";
         const PAYMENT_MESSAGE_CONFIRMED_SUCCESSFULLY = "Pagamento confirmado com sucesso!";
@@ -296,6 +301,7 @@ function woocommerce_safety_pay_init()
             $sandbox_api_key = $this->get_option('sandbox_api_key');
             $production_api_key = $this->get_option('production_api_key');
             $environment = $this->sandbox_mode ? self::SANDBOX : self::PRODUCTION;
+            $current_language = strtoupper(explode("_", get_locale())[0]);
 
             $safety_pay_api = new SafetyPay_API($environment, $sandbox_api_key, $production_api_key);
 
@@ -308,9 +314,9 @@ function woocommerce_safety_pay_init()
                 "payment_error_url" => $this->get_return_url($order),
                 "transaction_email" => $user ? $user->user_email : '',
                 "application_id" => SafetyPay_API::$EXPRESS_APPLICATION_ID,
-                "language_code" => strtoupper(explode("_", get_locale())[0]),
                 "expiration_time_minutes" => ((int)$this->payment_link_expiry_time) * 60,
                 "send_email_shopper" => $this->send_email_shopper == 'yes' && $user ? true : false,
+                "language_code" => in_array($current_language, self::SUPPORTED_LANGUAGES) ? $current_language : 'ES',
                 "sales_amount" => array(
                     "value" => $order->get_total(),
                     "currency_code" => $this->currency_code,
@@ -389,7 +395,6 @@ function woocommerce_safety_pay_init()
                     $order_id = $response['MerchantSalesID'];
                     $payment_reference = $response['PaymentReferenceNo'];
 
-
                     $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
                     $order = new WC_Order($order_id);
 
@@ -397,6 +402,9 @@ function woocommerce_safety_pay_init()
                         if ($this->validate_signature($args)) {
                             if (!$order->is_paid()) {
                                 switch ($status) {
+                                    case 100://Pagamento expirado
+                                        $order->update_status('failed', __(self::EXPIRED_PAYMENT_MESSAGE, $this->id));
+                                        break;
                                     case 101://Pagamento pendente
                                         $order->update_status('on-hold', __(self::AWAITING_PAYMENT_MESSAGE, $this->id));
                                         break;
