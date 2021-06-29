@@ -3,7 +3,7 @@
   Plugin Name:  SafetyPay for WooCommerce
   Plugin URI:   https://github.com/GydeonMarques/woocommerce-satefty-pay.git
   Description:  SafetyPay Payment Gateway Integration for WooCommerce.
-  Version:      1.0.1
+  Version:      1.0.2
   Author:       Gideon Marques da Silva
   Author URI:   https://www.linkedin.com/in/gideon-marques-da-silva-40921a1b0/
   License:      GPL-2.0+
