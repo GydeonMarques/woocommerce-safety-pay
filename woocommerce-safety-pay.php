@@ -374,7 +374,7 @@ function woocommerce_safety_pay_init()
         {
             $data = file_get_contents('php://input');
             if (isset($data)) {
-                $response = json_decode($data, true);
+                $response = json_decode($this->convertBodyRawToJson($data), true);
                 if (isset($response)) {
                     $args = array(
                         'apiKey' => $response['ApiKey'],
@@ -392,6 +392,7 @@ function woocommerce_safety_pay_init()
                     $status = $response['Status'];
                     $order_id = $response['MerchantSalesID'];
                     $payment_reference = $response['PaymentReferenceNo'];
+
 
                     $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
                     $order = new WC_Order($order_id);
@@ -508,6 +509,24 @@ function woocommerce_safety_pay_init()
                     $sepator . $signature;
             } else {
                 return '';
+            }
+        }
+
+
+        /**
+         * Converte um string raw para o formato json
+         * @param $body
+         * @return false|string
+         */
+        private function convertBodyRawToJson($body)
+        {
+            if (isset($body)) {
+                $response = array();
+                foreach (explode('&', $body) as $key => $value) {
+                    $values = explode("=", $value);
+                    $response[$values[0]] = $values[1];
+                }
+                return json_encode($response);
             }
         }
 
