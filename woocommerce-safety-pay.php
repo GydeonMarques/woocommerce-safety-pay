@@ -259,7 +259,7 @@ function woocommerce_safety_pay_init()
                     'type' => 'select',
                     'class' => 'wc-enhanced-select',
                     'default' => '24',
-                    'description' => __('Tempo de expiração do link de pagamento, após esse tempo são será possível realizar o pagamento utilizando o mesmo link, será necessário efeturar um novo pedido para obter um link atualizado.', $this->id),
+                    'description' => __('Tempo de expiração do link de pagamento, após esse tempo são será possível realizar o pagamento utilizando o mesmo link.', $this->id),
                     'options' => array(
                         '2' => '2 Horas',
                         '4' => '4 Horas',
