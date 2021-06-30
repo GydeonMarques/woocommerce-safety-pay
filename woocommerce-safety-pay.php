@@ -430,7 +430,7 @@ function woocommerce_safety_pay_init()
                                 $order->save();
 
                                 header('HTTP/1.1 200 OK');
-                                //Formato exigigo pelo safetey para confirmar que a notificaçõa (webhook) foi recebido com sucesso.
+                                //Formato de reposta exigido pela api do safetey para confirmar que a notificação (webhook) foi recebido com sucesso.
                                 echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
                                 exit();
 
@@ -502,10 +502,10 @@ function woocommerce_safety_pay_init()
          * Gera um único hash de dados.
          * @param $args
          * @param $signature
-         * @param string $sepator
+         * @param string $separator
          * @return string
          */
-        private function generate_data_hash($args, $signature, $sepator = ''): string
+        private function generate_data_hash($args, $signature, $separator = ''): string
         {
             if (isset($args) && isset($signature)) {
                 return
