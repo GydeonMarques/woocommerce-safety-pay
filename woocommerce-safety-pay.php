@@ -3,7 +3,7 @@
   Plugin Name:  SafetyPay for WooCommerce
   Plugin URI:   https://github.com/GydeonMarques/woocommerce-satefty-pay.git
   Description:  SafetyPay Payment Gateway Integration for WooCommerce.
-  Version:      1.0.2
+  Version:      1.0.3
   Author:       Gideon Marques da Silva
   Author URI:   https://www.linkedin.com/in/gideon-marques-da-silva-40921a1b0/
   License:      GPL-2.0+
@@ -119,7 +119,7 @@ function woocommerce_safety_pay_init()
             $this->init_settings();
 
             $this->title = $this->get_option('title');
-            $this->enabled = $this->get_option('enabled');
+            //$this->enabled = $this->get_option('enabled');
             $this->description = $this->get_option('description');
             $this->api_version = $this->get_option('api_version');
             $this->currency_code = $this->get_option('currency_code');
@@ -131,6 +131,7 @@ function woocommerce_safety_pay_init()
             $this->sandbox_signature_key = $this->get_option('sandbox_signature_key');
             $this->production_signature_key = $this->get_option('production_signature_key');
             $this->payment_link_expiry_time = $this->get_option('payment_link_expiry_time');
+            $this->enabled = !$this->currency_is_valid() ? false : $this->get_option('enabled');
 
             //Inicia as configurações do webooks.
             //Webooks são notificações enviadas ao seu sistema por meio de um link de callback,
@@ -558,17 +559,28 @@ function woocommerce_safety_pay_init()
             );
         }
 
+
+        /**
+         * Verifica se a moéda atual da loja e suportada
+         * pelo SafetyPay
+         * @return bool
+         */
+        private function currency_is_valid()
+        {
+            $supported_currencies = array();
+            foreach (self::SUPPORTED_CURRENCIES as $key => $value) {
+                $supported_currencies[] = $key;
+            }
+            return in_array(get_woocommerce_currency(), $supported_currencies);
+        }
+
         /**
          * Este método verifica o tipo da moeda corrente da sua loja
          * e análiza os tipos de moedas que são suportadas por este gateway de pagamento
          */
         public function admin_options()
         {
-            $supported_currencies = array();
-            foreach (self::SUPPORTED_CURRENCIES as $key => $value) {
-                $supported_currencies[] = $key;
-            }
-            if (in_array(get_woocommerce_currency(), $supported_currencies)) {
+            if ($this->currency_is_valid()) {
                 parent::admin_options();
             } else {
                 ?>
