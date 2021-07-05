@@ -396,9 +396,8 @@ function woocommerce_safety_pay_init()
                     $order_id = $response['MerchantSalesID'];
                     $payment_reference = $response['PaymentReferenceNo'];
 
-                    $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
                     $order = new WC_Order($order_id);
-
+                    
                     if (isset($order) && $order->get_id() == $order_id && $status) {
                         if ($this->validate_signature($args)) {
                             if (!$order->is_paid()) {
@@ -421,7 +420,7 @@ function woocommerce_safety_pay_init()
                                     case 203://Reembolso Aprovado
                                         $order->update_status('refunded', __(self::REFUND_APPROVED, $this->id));
                                         break;
-                                    default:
+                                    default://Falha no pagamento
                                         $order->update_status('failed', __(self::PAYMENT_FAILURE_MESSAGE, $this->id));
                                         break;
                                 }
@@ -430,14 +429,13 @@ function woocommerce_safety_pay_init()
                                 $order->save();
 
                                 header('HTTP/1.1 200 OK');
-                                //Formato de reposta exigido pela api do safetey para confirmar que a notificação (webhook) foi recebido com sucesso.
-                                echo '0,' . $this->generate_data_hash($args, $this->generate_signature_hash($args, $api_signature_key), ',');
+                                echo $this->generate_webhook_response_data($args);
                                 exit();
 
                             } else {
                                 header('HTTP/1.1 400 OK');
                                 echo json_encode(array(
-                                    'code' => 400,
+                                    'code' => 403,
                                     'message' => 'The order has already been paid'
                                 ));
                                 exit();
@@ -474,10 +472,8 @@ function woocommerce_safety_pay_init()
         {
             if (isset($args)) {
 
-                $api_signature_key = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
-
                 $api_response_signature = $args['signature'];
-                $new_signature_generated = $this->generate_signature_hash($args, $api_signature_key);
+                $new_signature_generated = $this->generate_signature_hash($args);
 
                 return strtoupper($api_response_signature) == strtoupper($new_signature_generated);
 
@@ -488,28 +484,59 @@ function woocommerce_safety_pay_init()
 
 
         /**
-         * Gera uma nova assinatura
+         * Gera um novo hash com os dados retonardos da api por meio do link de callback (webhooks),
+         * a partir disso, será gerada uma nova assinatura usando o algotitimo sha256.
          * @param $args
-         * @param $signature
+         * @return array
+         */
+        private function generate_signature_hash($args): string
+        {
+            return hash('sha256', $this->generate_signature_data_hash($args));
+        }
+
+
+        /**
+         * Gera um único hash de dados que serão criptografados
+         * para realizar a validação da assinatura posteiormente.
+         * @param $args
          * @return string
          */
-        private function generate_signature_hash($args, $signature): string
+        private function generate_signature_data_hash($args): string
         {
-            return hash('sha256', $this->generate_data_hash($args, $signature));
+            if (isset($args)) {
+                $signature = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
+                return
+                    $args['requestDateTime'] .
+                    $args['merchantSalesID'] .
+                    $args['referenceNo'] .
+                    $args['creationDateTime'] .
+                    $args['amount'] .
+                    $args['currencyID'] .
+                    $args['paymentReferenceNo'] .
+                    $args['status'] .
+                    $signature;
+            } else {
+                return '';
+            }
         }
 
         /**
-         * Gera um único hash de dados.
+         * Gera os dados da resposta de processamento das notificações (webhooks).
+         * OBS: Este e um formato de resposta exigido pela api do safetyPay.
+         * Ao receber uma notificação do safetyPay, o seu sistema deverá retornar
+         * uma resposta com os dados fornecidos nesse método, assim a api do safetyPay
+         * saberá que o seu sistema recebeu e processou a notificação com sucesso.
          * @param $args
-         * @param $signature
-         * @param string $separator
          * @return string
          */
-        private function generate_data_hash($args, $signature, $separator = ''): string
+        private function generate_webhook_response_data($args): string
         {
-            if (isset($args) && isset($signature)) {
+            if (isset($args)) {
+                $separator = ',';
+                $signature = $this->generate_signature_hash($args);
                 return
-                    $args['requestDateTime'] .
+                    '0' .
+                    $separator . $args['requestDateTime'] .
                     $separator . $args['merchantSalesID'] .
                     $separator . $args['referenceNo'] .
                     $separator . $args['creationDateTime'] .
@@ -517,12 +544,12 @@ function woocommerce_safety_pay_init()
                     $separator . $args['currencyID'] .
                     $separator . $args['paymentReferenceNo'] .
                     $separator . $args['status'] .
+                    $separator . $args['merchantSalesID'] .
                     $separator . $signature;
             } else {
                 return '';
             }
         }
-
 
         /**
          * Converte um string raw para o formato json
