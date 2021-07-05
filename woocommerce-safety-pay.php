@@ -510,14 +510,14 @@ function woocommerce_safety_pay_init()
             if (isset($args) && isset($signature)) {
                 return
                     $args['requestDateTime'] .
-                    $sepator . $args['merchantSalesID'] .
-                    $sepator . $args['referenceNo'] .
-                    $sepator . $args['creationDateTime'] .
-                    $sepator . $args['amount'] .
-                    $sepator . $args['currencyID'] .
-                    $sepator . $args['paymentReferenceNo'] .
-                    $sepator . $args['status'] .
-                    $sepator . $signature;
+                    $separator . $args['merchantSalesID'] .
+                    $separator . $args['referenceNo'] .
+                    $separator . $args['creationDateTime'] .
+                    $separator . $args['amount'] .
+                    $separator . $args['currencyID'] .
+                    $separator . $args['paymentReferenceNo'] .
+                    $separator . $args['status'] .
+                    $separator . $signature;
             } else {
                 return '';
             }
