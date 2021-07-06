@@ -385,19 +385,20 @@ function woocommerce_safety_pay_init()
                         'status' => $response['Status'],
                         'signature' => $response['Signature'],
                         'currencyID' => $response['CurrencyID'],
+                        'orderNo' => $response['MerchantSalesID'],
                         'referenceNo' => $response['ReferenceNo'],
                         'requestDateTime' => $response['RequestDateTime'],
                         'merchantSalesID' => $response['MerchantSalesID'],
                         'creationDateTime' => $response['CreationDateTime'],
                         'paymentReferenceNo' => $response['PaymentReferenceNo'],
                     );
-
+                    
                     $status = $response['Status'];
                     $order_id = $response['MerchantSalesID'];
                     $payment_reference = $response['PaymentReferenceNo'];
 
                     $order = new WC_Order($order_id);
-                    
+
                     if (isset($order) && $order->get_id() == $order_id && $status) {
                         if ($this->validate_signature($args)) {
                             if (!$order->is_paid()) {
@@ -472,36 +473,38 @@ function woocommerce_safety_pay_init()
         {
             if (isset($args)) {
 
-                $api_response_signature = $args['signature'];
-                $new_signature_generated = $this->generate_signature_hash($args);
+                $response_api_key = $args['apiKey'];
+                $response_api_signature = $args['signature'];
+                $api_internal_key = $this->sandbox_mode == 'yes' ? $this->sandbox_api_key : $this->production_api_key;
+                $new_signature_generated = $this->generate_signature_hash($args, false);
 
-                return strtoupper($api_response_signature) == strtoupper($new_signature_generated);
+                return (strtoupper($response_api_signature) == strtoupper($new_signature_generated)) && (strtoupper($response_api_key) == strtoupper($api_internal_key));
 
             } else {
                 return false;
             }
         }
 
-
         /**
          * Gera um novo hash com os dados retonardos da api por meio do link de callback (webhooks),
          * a partir disso, será gerada uma nova assinatura usando o algotitimo sha256.
          * @param $args
+         * @param $include_order_number
          * @return array
          */
-        private function generate_signature_hash($args): string
+        private function generate_signature_hash($args, $include_order_number = false): string
         {
-            return hash('sha256', $this->generate_signature_data_hash($args));
+            return hash('sha256', $this->generate_signature_data_hash($args, $include_order_number));
         }
-
 
         /**
          * Gera um único hash de dados que serão criptografados
          * para realizar a validação da assinatura posteiormente.
          * @param $args
+         * @param $include_order_number
          * @return string
          */
-        private function generate_signature_data_hash($args): string
+        private function generate_signature_data_hash($args, $include_order_number = false): string
         {
             if (isset($args)) {
                 $signature = $this->sandbox_mode == 'yes' ? $this->sandbox_signature_key : $this->production_signature_key;
@@ -514,6 +517,7 @@ function woocommerce_safety_pay_init()
                     $args['currencyID'] .
                     $args['paymentReferenceNo'] .
                     $args['status'] .
+                    ($include_order_number ? $args['orderNo'] : '') .
                     $signature;
             } else {
                 return '';
@@ -533,7 +537,7 @@ function woocommerce_safety_pay_init()
         {
             if (isset($args)) {
                 $separator = ',';
-                $signature = $this->generate_signature_hash($args);
+                $signature = $this->generate_signature_hash($args, true);
                 return
                     '0' .
                     $separator . $args['requestDateTime'] .
@@ -544,7 +548,7 @@ function woocommerce_safety_pay_init()
                     $separator . $args['currencyID'] .
                     $separator . $args['paymentReferenceNo'] .
                     $separator . $args['status'] .
-                    $separator . $args['merchantSalesID'] .
+                    $separator . $args['orderNo'] .
                     $separator . $signature;
             } else {
                 return '';
