@@ -392,7 +392,7 @@ function woocommerce_safety_pay_init()
                         'creationDateTime' => $response['CreationDateTime'],
                         'paymentReferenceNo' => $response['PaymentReferenceNo'],
                     );
-                    
+
                     $status = $response['Status'];
                     $order_id = $response['MerchantSalesID'];
                     $payment_reference = $response['PaymentReferenceNo'];
@@ -434,11 +434,8 @@ function woocommerce_safety_pay_init()
                                 exit();
 
                             } else {
-                                header('HTTP/1.1 400 OK');
-                                echo json_encode(array(
-                                    'code' => 403,
-                                    'message' => 'The order has already been paid'
-                                ));
+                                header('HTTP/1.1 200 OK');
+                                echo $this->generate_webhook_response_data($args);
                                 exit();
                             }
 
